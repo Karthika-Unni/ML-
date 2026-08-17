@@ -1,0 +1,57 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+housing = fetch_california_housing()
+X = housing.data[:, 0]  
+y = housing.target     
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train_col = X_train.reshape(-1, 1)
+X_test_col = X_test.reshape(-1, 1)
+m_gd = 0.0
+c_gd = 0.0
+learning_rate = 0.05  
+epochs = 24          
+n = float(len(X_train))
+X_train_mean, X_train_std = np.mean(X_train), np.std(X_train)
+X_train_scaled = (X_train - X_train_mean) / X_train_std
+for i in range(epochs): 
+    y_pred_gd_step = m_gd * X_train_scaled + c_gd
+    D_m = (-2/n) * sum(X_train_scaled * (y_train - y_pred_gd_step))
+    D_c = (-2/n) * sum(y_train - y_pred_gd_step)
+    m_gd -= learning_rate * D_m
+    c_gd -= learning_rate * D_c
+m_gd_final = m_gd / X_train_std
+c_gd_final = c_gd - (m_gd * X_train_mean / X_train_std)
+y_pred_gd = m_gd_final * X_test + c_gd_final
+X_b = np.c_[np.ones((len(X_train), 1)), X_train_col] 
+theta_best = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y_train)
+c_ne = theta_best[0]
+m_ne = theta_best[1]
+y_pred_ne = m_ne * X_test + c_ne
+mse_gd = mean_squared_error(y_test, y_pred_gd)
+r2_gd = r2_score(y_test, y_pred_gd)
+mse_ne = mean_squared_error(y_test, y_pred_ne)
+r2_ne = r2_score(y_test, y_pred_ne)
+print("--- EVALUATION METRICS ---")
+print(f"Gradient Descent  -> MSE: {mse_gd:.4f} | R² Score: {r2_gd:.4f}")
+print(f"Normal Equation   -> MSE: {mse_ne:.4f} | R² Score: {r2_ne:.4f}\n")
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
+ax1.scatter(X_test[:300], y_test[:300], color='gray', alpha=0.5, label='Actual Data (Sample)')
+ax1.plot(X_test, y_pred_gd, color='blue', linewidth=2.5, label=f'GD Line: y = {m_gd_final:.2f}x + {c_gd_final:.2f}')
+ax1.set_title(f'Gradient Descent (24 epochs)\nMSE: {mse_gd:.4f} | R²: {r2_gd:.4f}')
+ax1.set_xlabel('Median Income')
+ax1.set_ylabel('House Value')
+ax1.legend()
+ax1.grid(True, linestyle='--', alpha=0.6)
+ax2.scatter(X_test[:300], y_test[:300], color='gray', alpha=0.5, label='Actual Data (Sample)')
+ax2.plot(X_test, y_pred_ne, color='red', linewidth=2.5, label=f'NE Line: y = {m_ne:.2f}x + {c_ne:.2f}')
+ax2.set_title(f'Normal Equation (Exact Solution)\nMSE: {mse_ne:.4f} | R²: {r2_ne:.4f}')
+ax2.set_xlabel('Median Income')
+ax2.legend()
+ax2.grid(True, linestyle='--', alpha=0.6)
+plt.suptitle('Comparison matching requested metrics', fontsize=16)
+plt.tight_layout()
+plt.show()
