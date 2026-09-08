@@ -1,0 +1,30 @@
+import pandas as pd
+import time
+from sklearn.datasets import fetch_openml
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+data = fetch_openml("Fashion-MNIST", version=1, as_frame=False)
+X, y = data.data[:12000] / 255.0, data.target[:12000].astype(int)
+
+Xtr, Xte = X[:10000], X[10000:]
+ytr, yte = y[:10000], y[10000:]
+
+results = []
+
+for name, kernel in [("Linear","linear"), ("Polynomial","poly"), ("RBF","rbf")]:
+    start = time.time()
+    model = SVC(kernel=kernel, C=1, degree=3, gamma="scale")
+    model.fit(Xtr, ytr)
+    pred = model.predict(Xte)
+    t = time.time() - start
+
+    results.append([name,
+        accuracy_score(yte, pred),
+        precision_score(yte, pred, average="macro"),
+        recall_score(yte, pred, average="macro"),
+        f1_score(yte, pred, average="macro"), t])
+
+df = pd.DataFrame(results, columns=["Kernel","Accuracy","Precision","Recall","F1","Time"])
+print(df)
+print("\nBest Kernel:", df.loc[df.Accuracy.idxmax(), "Kernel"])
