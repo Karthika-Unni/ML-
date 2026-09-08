@@ -1,0 +1,84 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    f1_score,
+    precision_score,
+    recall_score,
+)
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+iris = load_iris()
+X, y_binary = iris.data[:, [2, 3]], np.where(iris.target == 0, 1, 0)
+print(
+    f"Feature names: {iris.feature_names}\nDataset shape: {X.shape}\nClass distribution:\n{pd.Series(y_binary).value_counts().to_string()}"
+)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y_binary, test_size=0.2, random_state=42, stratify=y_binary
+)
+print(
+    f"Training samples: {len(X_train)}\nTesting samples: {len(X_test)}"
+)
+scaler = StandardScaler()
+X_train, X_test = scaler.fit_transform(X_train), scaler.transform(X_test)
+model = SVC(kernel="linear", C=1.0).fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+print(
+    f"\nPredicted labels:\n{y_pred}\n\nAccuracy: {accuracy_score(y_test, y_pred):.4f}\n"
+    f"Precision: {precision_score(y_test, y_pred):.4f}\nRecall: {recall_score(y_test, y_pred):.4f}\n"
+    f"F1-score: {f1_score(y_test, y_pred):.4f}"
+)
+print(
+    "\nClassification Report:\n"
+    + classification_report(
+        y_test, y_pred, target_names=["Non-Setosa", "Setosa"]
+    )
+)
+
+w, b = model.coef_[0], model.intercept_[0]
+print(f"Weight Vector: {w}\nBias: {b}")
+sv = model.support_vectors_
+print(
+    f"Number of Support Vectors: {len(sv)}\nSupport Vectors:\n{sv}\nMargin Width: {2 / np.linalg.norm(w):.4f}"
+)
+xx = np.linspace(X_train[:, 0].min() - 1, X_train[:, 0].max() + 1, 500)
+db = -(w[0] * xx + b) / w[1]
+mp, mn = -(w[0] * xx + b - 1) / w[1], -(w[0] * xx + b + 1) / w[1]
+
+plt.figure(figsize=(10, 7))
+plt.scatter(
+    X_train[y_train == 1, 0],
+    X_train[y_train == 1, 1],
+    label="Setosa",
+    marker="o",
+)
+plt.scatter(
+    X_train[y_train == 0, 0],
+    X_train[y_train == 0, 1],
+    label="Non-Setosa",
+    marker="s",
+)
+plt.plot(xx, db, label="Decision Boundary", color="black")
+plt.plot(xx, mp, "--", label="Margin", color="green")
+plt.plot(xx, mn, "--", color="green")
+plt.scatter(
+    sv[:, 0],
+    sv[:, 1],
+    s=120,
+    facecolors="none",
+    edgecolors="black",
+    linewidths=1.5,
+    label="Support Vectors",
+)
+plt.xlabel("Standardized Petal Length")
+plt.ylabel("Standardized Petal Width")
+plt.title("Linear SVM: Decision Boundary and Margin")
+plt.legend()
+plt.grid(True)
+plt.show()
