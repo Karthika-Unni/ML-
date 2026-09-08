@@ -1,0 +1,74 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+
+# Load and Preprocess Data
+df = fetch_openml(name="adult", version=2, as_frame=True).frame
+df.columns = df.columns.str.lower().str.replace("_", "-")
+if "class" in df.columns:
+    df = df.rename(columns={"class": "income"})
+
+df = df.replace("?", np.nan).dropna()
+df["income"] = df["income"].astype(str).str.strip().map({"<=50K": 0, ">50K": 1, "<=50k": 0, ">50k": 1})
+
+X, y = df.drop("income", axis=1), df["income"]
+
+num_feat = ["age", "fnlwgt", "education-num", "capital-gain", "capital-loss", "hours-per-week"]
+cat_feat = ["workclass", "education", "marital-status", "occupation", "relationship", "race", "sex", "native-country"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+preprocessor = ColumnTransformer([
+    ("num", StandardScaler(), num_feat),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), cat_feat)
+])
+
+# Train Models
+lr_model = Pipeline([("prep", preprocessor), ("clf", LogisticRegression(max_iter=1000))]).fit(X_train, y_train)
+dt_model = Pipeline([("prep", preprocessor), ("clf", DecisionTreeClassifier(criterion="entropy", max_depth=5, random_state=42))]).fit(X_train, y_train)
+
+# Predictions
+y_pred_lr = lr_model.predict(X_test)
+y_pred_dt = dt_model.predict(X_test)
+
+# Compare Performance
+results = pd.DataFrame({
+    "Model": ["Logistic Regression", "Decision Tree"],
+    "Accuracy": [accuracy_score(y_test, y_pred_lr), accuracy_score(y_test, y_pred_dt)],
+    "Precision": [precision_score(y_test, y_pred_lr), precision_score(y_test, y_pred_dt)],
+    "Recall": [recall_score(y_test, y_pred_lr), recall_score(y_test, y_pred_dt)],
+    "F1-score": [f1_score(y_test, y_pred_lr), f1_score(y_test, y_pred_dt)]
+})
+
+print("--- Performance Comparison ---")
+print(results)
+
+print("\n--- Logistic Regression Report ---")
+print(classification_report(y_test, y_pred_lr))
+
+print("--- Decision Tree Report ---")
+print(classification_report(y_test, y_pred_dt))
+
+# Feature Analysis
+feat_names = lr_model.named_steps["prep"].get_feature_names_out()
+print("\nTop Logistic Regression Coefficients:")
+print(pd.Series(lr_model.named_steps["clf"].coef_[0], index=feat_names).abs().sort_values(ascending=False).head(10))
+
+print("\nTop Decision Tree Feature Importance:")
+print(pd.Series(dt_model.named_steps["clf"].feature_importances_, index=feat_names).sort_values(ascending=False).head(10))
+
+# Plot Comparison
+results.set_index("Model").plot(kind="bar", figsize=(8, 5), ylim=(0, 1))
+plt.title("Logistic Regression vs Decision Tree")
+plt.ylabel("Score")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.show()
