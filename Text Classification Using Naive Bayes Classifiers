@@ -1,0 +1,55 @@
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.metrics import accuracy_score, f1_score
+categories = [
+    'sci.space',
+    'rec.sport.baseball',
+    'comp.graphics',
+    'talk.politics.misc'
+]
+
+data = fetch_20newsgroups(categories=categories)
+
+X = data.data
+y = data.target
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
+)
+vectorizer = CountVectorizer()
+
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+mnb = MultinomialNB()
+mnb.fit(X_train_vec, y_train)
+
+pred_mnb = mnb.predict(X_test_vec)
+
+print("Multinomial NB Results")
+print("Accuracy :", accuracy_score(y_test, pred_mnb))
+print("F1 Score :", f1_score(y_test, pred_mnb, average='weighted'))
+
+bnb = BernoulliNB()
+bnb.fit(X_train_vec, y_train)
+
+pred_bnb = bnb.predict(X_test_vec)
+
+print("\nBernoulli NB Results")
+print("Accuracy :", accuracy_score(y_test, pred_bnb))
+print("F1 Score :", f1_score(y_test, pred_bnb, average='weighted'))
+
+acc_mnb = accuracy_score(y_test, pred_mnb)
+acc_bnb = accuracy_score(y_test, pred_bnb)
+
+print("\nComparison")
+if acc_mnb > acc_bnb:
+    print("Multinomial Naive Bayes performs better.")
+elif acc_bnb > acc_mnb:
+    print("Bernoulli Naive Bayes performs better.")
+else:
+    print("Both classifiers have the same accuracy.")
