@@ -1,0 +1,48 @@
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_openml
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score
+
+data = fetch_openml("mnist_784", version=1, as_frame=False)
+X, y = data.data / 255.0, data.target.astype(int)
+
+Xtr, Xte = X[:60000], X[60000:]
+ytr, yte = y[:60000], y[60000:]
+
+results = []
+histories = {}
+
+for act in ["logistic", "relu", "tanh"]:
+    start = time.time()
+
+    model = MLPClassifier(
+        hidden_layer_sizes=(128,),
+        activation=act,
+        solver="adam",
+        batch_size=128,
+        max_iter=10,
+        random_state=42
+    )
+
+    model.fit(Xtr, ytr)
+    pred = model.predict(Xte)
+    t = time.time() - start
+
+    results.append([act, accuracy_score(yte, pred), t])
+    histories[act] = model.loss_curve_
+
+df = pd.DataFrame(results, columns=["Activation", "Accuracy", "Time"])
+print(df)
+print("\nBest Activation:", df.loc[df.Accuracy.idxmax(), "Activation"])
+
+plt.figure()
+for act, loss in histories.items():
+    plt.plot(loss, label=act)
+plt.xlabel("Epoch")
+plt.ylabel("Training Loss")
+plt.title("Activation Function Comparison")
+plt.legend()
+plt.grid()
+plt.show()
