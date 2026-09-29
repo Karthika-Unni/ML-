@@ -1,0 +1,58 @@
+import pandas as pd
+import time
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+data = pd.read_csv(
+    "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv",
+    sep=";"
+)
+
+X, y = data.drop("quality", axis=1), data.quality
+
+Xtr, Xte, ytr, yte = train_test_split(
+    X, y, test_size=.2, random_state=42, stratify=y
+)
+
+sc = StandardScaler()
+Xtr, Xte = sc.fit_transform(Xtr), sc.transform(Xte)
+
+architectures = [
+    ("1 Layer - 16", (16,)),
+    ("1 Layer - 32", (32,)),
+    ("2 Layers - 32,16", (32,16)),
+    ("2 Layers - 64,32", (64,32)),
+    ("3 Layers - 64,32,16", (64,32,16))
+]
+
+results = []
+
+for name, arch in architectures:
+    start = time.time()
+
+    model = MLPClassifier(
+        hidden_layer_sizes=arch, activation="relu",
+        solver="adam", max_iter=500, random_state=42
+    )
+    model.fit(Xtr, ytr)
+    pred = model.predict(Xte)
+
+    results.append([
+        name,
+        accuracy_score(yte, pred),
+        precision_score(yte, pred, average="macro", zero_division=0),
+        recall_score(yte, pred, average="macro", zero_division=0),
+        f1_score(yte, pred, average="macro", zero_division=0),
+        time.time() - start
+    ])
+
+df = pd.DataFrame(
+    results,
+    columns=["Architecture", "Accuracy", "Precision", "Recall", "F1", "Time"]
+)
+
+print(df)
+print("\nBest Architecture:", df.loc[df.Accuracy.idxmax(), "Architecture"])
+print("Best Accuracy:", df.Accuracy.max())
