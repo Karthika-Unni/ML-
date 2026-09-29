@@ -1,0 +1,25 @@
+import time
+import pandas as pd
+from sklearn.datasets import fetch_openml
+from sklearn.neural_network import MLPClassifier
+
+# Load and normalize Fashion-MNIST data
+X, y = fetch_openml('Fashion-MNIST', version=1, return_X_y=True, parser='auto')
+X_tr, X_te = X.to_numpy()[:60000] / 255.0, X.to_numpy()[60000:] / 255.0
+y_tr, y_te = y.to_numpy().astype(int)[:60000], y.to_numpy().astype(int)[60000:]
+
+# Hyperparameter configurations: (learning_rate, batch_size, epochs)
+configs = [(0.001, 32, 10), (0.001, 128, 10), (0.01, 128, 10), (0.001, 128, 5)]
+results = []
+
+for lr, bs, ep in configs:
+    clf = MLPClassifier(hidden_layer_sizes=(128,), learning_rate_init=lr, 
+                        batch_size=bs, max_iter=ep, random_state=42)
+    start = time.time()
+    clf.fit(X_tr, y_tr)
+    results.append([lr, bs, ep, clf.score(X_te, y_te), time.time() - start])
+
+# Display results
+df = pd.DataFrame(results, columns=["LR", "Batch", "Epochs", "Acc", "Time"])
+print(df)
+print("\nBest Configuration:\n", df.loc[df["Acc"].idxmax()])
